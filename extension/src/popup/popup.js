@@ -1,6 +1,3 @@
-/**
- * Popup script for Jarvis Chrome Extension
- */
 import { log } from '../lib/logger.js';
 
 // DOM Elements
@@ -16,20 +13,15 @@ const saveSettingsBtn = document.getElementById('save-settings');
 const cancelSettingsBtn = document.getElementById('cancel-settings');
 const clearBtn = document.getElementById('clear-btn');
 
-/**
- * Format a date for display
- * @param {string | null} isoDate
- * @returns {string}
- */
 function formatDate(isoDate) {
   if (!isoDate) return 'Never';
 
   const date = new Date(isoDate);
   const now = new Date();
   const diffMs = now - date;
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
+  const diffMins = Math.floor(diffMs / 60 * 1000);
+  const diffHours = Math.floor(diffMs / 60 * 60 * 1000);
+  const diffDays = Math.floor(diffMs / 24 * 60 * 60 * 1000);
 
   if (diffMins < 1) return 'Just now';
   if (diffMins < 60) return `${diffMins}m ago`;
@@ -39,9 +31,6 @@ function formatDate(isoDate) {
   return date.toLocaleDateString();
 }
 
-/**
- * Load and display current status
- */
 async function loadStatus() {
   try {
     const status = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
@@ -61,18 +50,14 @@ async function loadStatus() {
   }
 }
 
-/**
- * Load settings into form
- */
+
 async function loadSettings() {
   const settings = await chrome.storage.sync.get(['apiEndpoint', 'apiKey']);
   apiEndpointInput.value = settings.apiEndpoint || 'http://localhost:3000/api/v1';
   apiKeyInput.value = settings.apiKey || '';
 }
 
-/**
- * Save settings
- */
+
 async function saveSettings() {
   const apiEndpoint = apiEndpointInput.value.trim();
   const apiKey = apiKeyInput.value.trim();
@@ -83,9 +68,6 @@ async function saveSettings() {
   loadStatus();
 }
 
-/**
- * Trigger manual sync
- */
 async function triggerSync() {
   syncBtn.disabled = true;
   syncBtn.textContent = 'Syncing...';
@@ -123,9 +105,6 @@ async function triggerSync() {
   }
 }
 
-/**
- * Clear all local data
- */
 async function clearData() {
   if (!confirm('Are you sure you want to clear all locally stored conversations? This cannot be undone.')) {
     return;
@@ -139,7 +118,6 @@ async function clearData() {
   }
 }
 
-// Event Listeners
 syncBtn.addEventListener('click', triggerSync);
 
 settingsBtn.addEventListener('click', () => {
@@ -155,5 +133,4 @@ cancelSettingsBtn.addEventListener('click', () => {
 
 clearBtn.addEventListener('click', clearData);
 
-// Initialize
 document.addEventListener('DOMContentLoaded', loadStatus);
