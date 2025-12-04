@@ -24,6 +24,7 @@ const config = {
 
 // State
 let lastCapturedMessageCount = 0;
+let lastConversationId = null;
 let debounceTimer = null;
 
 function getConversationId() {
@@ -32,7 +33,6 @@ function getConversationId() {
 }
 
 function getConversationTitle() {
-  // Try multiple selectors for robustness
   const selectors = [
     '[data-testid="chat-title-button"]',
     'title',
@@ -52,7 +52,7 @@ function getConversationTitle() {
   // Fallback: use first user message as title
   const firstUserMessage = document.querySelector('[data-testid="user-message"]');
   if (firstUserMessage) {
-    const text = firstUserMessage.textContent?.trim().substring(0, 100);
+    const text = firstUserMessage.textContent?.trim().substring(0, 50);
     return text || 'Untitled Conversation';
   }
 
@@ -60,16 +60,17 @@ function getConversationTitle() {
 }
 
 function extractMessages() {
-  const messages = [];
-  const userMessages = document.querySelectorAll('[data-testid="user-message"]');
-
-  if (userMessages.length > 0) {
-    // Get all message elements in DOM order
+  try {
     const allElements = document.querySelectorAll('[data-testid="user-message"], .standard-markdown');
 
+    if (allElements.length === 0) {
+      return [];
+    }
+
+    const messages = [];
+
     allElements.forEach((element, index) => {
-      const isUser = element.hasAttribute('data-testid') &&
-                     element.getAttribute('data-testid') === 'user-message';
+      const isUser = element.getAttribute('data-testid') === 'user-message';
       const content = extractMessageContent(element);
 
       if (content) {
@@ -84,10 +85,10 @@ function extractMessages() {
     });
 
     return messages;
+  } catch (error) {
+    log.error('Error extracting messages:', error);
+    return [];
   }
-
-  log.debug('No messages found with primary selectors');
-  return messages;
 }
 
 function extractMessageContent(container) {
@@ -119,11 +120,6 @@ function captureConversation() {
   }
 
   const messages = extractMessages();
-  if (messages.length === 0) {
-    log.debug('No messages found');
-    return null;
-  }
-
   const conversation = {
     id: conversationId,
     title: getConversationTitle(),
@@ -138,16 +134,13 @@ function captureConversation() {
 }
 
 async function saveConversation(conversation) {
-  if (!conversation) return;
-
   try {
     const result = await chrome.storage.local.get(['conversations']);
     const conversations = result.conversations || {};
 
-    // Update or insert
     const existing = conversations[conversation.id];
     if (existing) {
-      conversation.createdAt = existing.createdAt; // Preserve original creation time
+      conversation.createdAt = existing.createdAt;
     }
 
     conversations[conversation.id] = conversation;
@@ -173,7 +166,15 @@ function debouncedCapture() {
 
   debounceTimer = setTimeout(() => {
     const conversation = captureConversation();
-    if (conversation && conversation.messageCount !== lastCapturedMessageCount) {
+    if (!conversation) return;
+
+    // Reset count if conversation changed
+    if (conversation.id !== lastConversationId) {
+      lastCapturedMessageCount = 0;
+      lastConversationId = conversation.id;
+    }
+
+    if (conversation.messageCount !== lastCapturedMessageCount) {
       lastCapturedMessageCount = conversation.messageCount;
       saveConversation(conversation);
     }
@@ -182,10 +183,19 @@ function debouncedCapture() {
 
 function setupObserver() {
   const observer = new MutationObserver((mutations) => {
-    // Check if any mutation is relevant (new messages added)
     const isRelevant = mutations.some(mutation => {
-      return mutation.addedNodes.length > 0 ||
-             mutation.type === 'characterData';
+      // Capture when streaming ends
+      if (mutation.type === 'attributes' && mutation.attributeName === 'data-is-streaming') {
+        return mutation.target.getAttribute('data-is-streaming') === 'false';
+      }
+      if (mutation.addedNodes.length > 0) {
+        return Array.from(mutation.addedNodes).some(node => {
+          if (node.nodeType !== Node.ELEMENT_NODE) return false;
+          return node.matches?.('[data-testid="user-message"], .standard-markdown') ||
+                 node.querySelector?.('[data-testid="user-message"], .standard-markdown');
+        });
+      }
+      return false;
     });
 
     if (isRelevant) {
@@ -193,12 +203,12 @@ function setupObserver() {
     }
   });
 
-  // Observe the main content area
   const targetNode = document.body;
   observer.observe(targetNode, {
     childList: true,
     subtree: true,
-    characterData: true
+    attributes: true,
+    attributeFilter: ['data-is-streaming']
   });
 
   log.debug('Observer started');
@@ -207,7 +217,6 @@ function setupObserver() {
 function init() {
   log.info('Content script loaded');
 
-  // Wait for page to be ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       setupObserver();
@@ -217,17 +226,6 @@ function init() {
     setupObserver();
     debouncedCapture();
   }
-
-  // Also capture on URL changes (SPA navigation)
-  let lastUrl = window.location.href;
-  setInterval(() => {
-    if (window.location.href !== lastUrl) {
-      lastUrl = window.location.href;
-      lastCapturedMessageCount = 0; // Reset for new conversation
-      debouncedCapture();
-    }
-  }, 1000);
 }
 
-// Start
 init();
