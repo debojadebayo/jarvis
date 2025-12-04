@@ -3,9 +3,20 @@ import { AppError } from "../errors";
 
 export function errorHandler(err: Error, request: FastifyRequest, reply:FastifyReply){
     if(err instanceof AppError){
-        reply.status(err.statusCode).send({...err.toJSON()});
+        reply.status(err.statusCode).send(err.toJSON());
     } else {
-        request.log.error(err);
+         request.log.error({
+            error: {
+                name: err.name,
+                message: err.message,
+                stack: err.stack,
+                },
+                request: {
+                method: request.method,
+                url: request.url,
+                body: request.body,
+                },
+            });
         reply.status(500).send({
             error: 'INTERNAL_SERVER_ERROR',
             message: 'An unexpected error occurred.',

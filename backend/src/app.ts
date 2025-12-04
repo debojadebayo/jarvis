@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import { env } from "./config/env";
 import { registerRateLimit } from "./middleware/rate-limit";
 import { errorHandler } from "./middleware/error-handler";
+import { validate } from "./middleware/validate";
 
 
 export async function buildApp(){
@@ -20,8 +21,6 @@ export async function buildApp(){
     });
 
     await registerRateLimit(app);
-
-
 
     return app
 }
