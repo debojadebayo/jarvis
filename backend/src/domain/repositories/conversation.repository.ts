@@ -1,39 +1,56 @@
 import { eq } from "drizzle-orm";
 import { db } from "../../infrastructure/db/index";
 import { Conversation, conversations, NewConversation } from "../../infrastructure/db/schema";
+import { DatabaseError } from "../../errors";
 
 
-//should create DI here later for proper testing 
+//should create DI here later for proper testing
 export class ConversationRepository {
     async findByClaudeId(claudeConversationId: string): Promise<Conversation | null> {
-        const results = await db
-            .select()
-            .from(conversations)
-            .where(eq(conversations.claudeConversationId, claudeConversationId))
-            .limit(1);
-        return results[0] || null;
+        try {
+            const results = await db
+                .select()
+                .from(conversations)
+                .where(eq(conversations.claudeConversationId, claudeConversationId))
+                .limit(1);
+            return results[0] || null;
+        } catch (error) {
+            throw new DatabaseError('Failed to find conversation', { claudeConversationId, error });
+        }
     }
 
     async create(conversation: NewConversation): Promise<Conversation> {
-        const [newConversation] = await db
-            .insert(conversations)
-            .values(conversation)
-            .returning();
-        return newConversation;
+        try {
+            const [newConversation] = await db
+                .insert(conversations)
+                .values(conversation)
+                .returning();
+            return newConversation;
+        } catch (error) {
+            throw new DatabaseError('Failed to create conversation', { conversation, error });
+        }
     }
 
     async update(id: string, updates: Partial<Conversation>): Promise<Conversation> {
-        const [updatedConversation] = await db
-            .update(conversations)
-            .set(updates)
-            .where(eq(conversations.id, id))
-            .returning();
-        return updatedConversation;
+        try {
+            const [updatedConversation] = await db
+                .update(conversations)
+                .set({...updates, updated_at: new Date()})
+                .where(eq(conversations.id, id))
+                .returning();
+            return updatedConversation;
+        } catch (error) {
+            throw new DatabaseError('Failed to update conversation', { id, updates, error });
+        }
     }
 
     async delete(id: string): Promise<void> {
-        await db
-            .delete(conversations)
-            .where(eq(conversations.id, id));
+        try {
+            await db
+                .delete(conversations)
+                .where(eq(conversations.id, id));
+        } catch (error) {
+            throw new DatabaseError('Failed to delete conversation', { id, error });
+        }
     }
 }

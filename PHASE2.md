@@ -942,13 +942,14 @@ export class EmbeddingService {
 }
 
 // src/services/embedding-queue.ts
-import { EmbeddingService } from './embedding.service';
+// Singleton pattern - ensures only one queue instance exists across the app
 
 export class EmbeddingQueue {
   private static instance: EmbeddingQueue;
   private queue: string[] = [];
-  private processing = false;
-  private embeddingService = new EmbeddingService();
+  private isProcessing: boolean = false;
+
+  private constructor() {} // Private constructor prevents direct instantiation
 
   static getInstance(): EmbeddingQueue {
     if (!EmbeddingQueue.instance) {
@@ -959,30 +960,77 @@ export class EmbeddingQueue {
 
   add(conversationId: string) {
     this.queue.push(conversationId);
-    this.process();
   }
 
-  private async process() {
-    if (this.processing || this.queue.length === 0) return;
-
-    this.processing = true;
-
-    while (this.queue.length > 0) {
-      const id = this.queue.shift()!;
-      try {
-        await this.embeddingService.generateEmbedding(id);
-        console.log(`Generated embedding for conversation: ${id}`);
-      } catch (error) {
-        console.error(`Failed to generate embedding for ${id}:`, error);
-        // Could re-queue with backoff for V2
-      }
+  processNext(): string | undefined {
+    if (this.isProcessing || this.queue.length === 0) {
+      return;
     }
+    this.isProcessing = true;
+    const conversationId = this.queue.shift();
+    this.isProcessing = false;
+    return conversationId;
+  }
 
-    this.processing = false;
+  isEmpty(): boolean {
+    return this.queue.length === 0;
   }
 
   getQueueLength(): number {
     return this.queue.length;
+  }
+}
+
+// src/services/embedding.service.ts
+// Processes queue items and generates embeddings via Voyage AI SDK
+
+import { EmbeddingQueue } from './embedding-queue';
+import { MessageRepository } from '../repositories/message.repository';
+import { EmbeddingsRepository } from '../repositories/embedding.repository';
+import { voyageClient } from '../infrastructure/embedding-providers';
+import { Message } from '../db/schema';
+
+export class EmbeddingService {
+  private embeddingQueue = EmbeddingQueue.getInstance();
+
+  constructor(
+    private messageRepository: MessageRepository,
+    private embeddingsRepository: EmbeddingsRepository
+  ) {}
+
+  async processNextConversation(): Promise<void> {
+    const conversationId = this.embeddingQueue.processNext();
+    if (!conversationId) return;
+
+    const messages = await this.getMessages(conversationId);
+    if (messages.length === 0) {
+      throw new Error(`No messages found for conversation ID: ${conversationId}`);
+    }
+
+    const embeddings = await this.generateEmbeddings(messages);
+    await this.saveEmbeddings(conversationId, embeddings);
+  }
+
+  private async getMessages(conversationId: string): Promise<Message[]> {
+    return this.messageRepository.findByConversationId(conversationId);
+  }
+
+  private async generateEmbeddings(messages: Message[]): Promise<number[]> {
+    const texts = messages.map(msg => `${msg.role}: ${msg.content}`).join('\n');
+    const response = await voyageClient.embed({
+      input: [texts],
+      model: 'voyage-3-large'
+    });
+
+    if (!response.data || !response.data[0]?.embedding) {
+      throw new Error('Failed to generate embeddings');
+    }
+
+    return response.data[0].embedding;
+  }
+
+  private async saveEmbeddings(conversationId: string, embeddings: number[]): Promise<void> {
+    await this.embeddingsRepository.upsert(conversationId, embeddings);
   }
 }
 ```
@@ -1035,6 +1083,10 @@ export async function buildApp() {
 import { buildApp } from './app';
 import { testConnection, closeConnection } from './db';
 import { env } from './config/env';
+import { EmbeddingQueue } from './services/embedding-queue';
+import { EmbeddingService } from './services/embedding.service';
+import { MessageRepository } from './repositories/message.repository';
+import { EmbeddingsRepository } from './repositories/embedding.repository';
 
 async function main() {
   const app = await buildApp();
@@ -1046,9 +1098,30 @@ async function main() {
     process.exit(1);
   }
 
+  // Start embedding queue processor (Option 2B: interval-based)
+  const embeddingService = new EmbeddingService(
+    new MessageRepository(),
+    new EmbeddingsRepository()
+  );
+  const queue = EmbeddingQueue.getInstance();
+
+  const QUEUE_INTERVAL_MS = 10000; // Check every 10 seconds
+  const queueInterval = setInterval(async () => {
+    while (!queue.isEmpty()) {
+      try {
+        await embeddingService.processNextConversation();
+        console.log('Processed embedding from queue');
+      } catch (err) {
+        console.error('Embedding processing failed:', err);
+        break; // Stop on error, retry next interval
+      }
+    }
+  }, QUEUE_INTERVAL_MS);
+
   // Graceful shutdown
   const shutdown = async () => {
     console.log('Shutting down...');
+    clearInterval(queueInterval); // Stop queue processor
     await app.close();
     await closeConnection();
     process.exit(0);
@@ -1415,29 +1488,29 @@ export default defineConfig({
 - [x] Configure CORS for Chrome extension
 - [x] Implement rate limiting (100 req/15 min)
 - [x] Implement authentication middleware
-- [ ] Implement validation middleware with Zod schemas
-- [ ] Implement global error handler
+- [x] Implement validation middleware with Zod schemas
+- [x] Implement global error handler
 
 ### Error Handling
-- [ ] Create base AppError class
-- [ ] Create ValidationError, AuthenticationError, NotFoundError, DatabaseError
-- [ ] Wire up error handler (registered LAST)
+- [x] Create base AppError class
+- [x] Create ValidationError, AuthenticationError, NotFoundError, DatabaseError
+- [x] Wire up error handler (registered LAST)
 
 ### Database
-- [ ] Set up Drizzle ORM with PostgreSQL
-- [ ] Configure connection pool (min/max connections, timeouts)
-- [ ] Create database migrations
-- [ ] Test connection on startup
+- [x] Set up Drizzle ORM with PostgreSQL
+- [x] Configure connection pool (min/max connections, timeouts)
+- [] Create database migrations
+- [] Test connection on startup
 
 ### Repositories
-- [ ] Implement ConversationRepository with parameterized queries
-- [ ] Implement MessageRepository with upsert logic
-- [ ] Implement EmbeddingRepository
+- [x] Implement ConversationRepository with parameterized queries
+- [x] Implement MessageRepository with upsert logic
+- [x] Implement EmbeddingRepository
 
 ### Services
-- [ ] Build ConversationService with upsert logic
-- [ ] Build EmbeddingService with text concatenation
-- [ ] Create simple embedding queue
+- [x] Build ConversationService with upsert logic
+- [x] Build EmbeddingService with text concatenation
+- [x] Create simple embedding queue
 
 ### Adapters
 - [ ] Create Voyage AI adapter with error handling

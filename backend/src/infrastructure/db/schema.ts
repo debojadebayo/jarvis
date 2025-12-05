@@ -20,7 +20,7 @@ export const messages = pgTable("messages", {
         .references(() => conversations.id, { onDelete: "cascade" }),
     role: varchar("role", { length: 50 }).notNull(),
     content: text("content").notNull(),
-    timestamp: timestamp("timestamp").notNull(),
+    created_at: timestamp("timestamp").notNull(),
     sequence_number: integer("sequence_number").notNull(),
 }, table => ({
     conversationIdIdx: index("messages_conversation_id_idx").on(table.conversationId),
@@ -36,7 +36,7 @@ export const conversationEmbeddings = pgTable("conversations_embeddings", {
         .unique()
         .references(() => conversations.id, { onDelete: "cascade" }),
     embedding: vector("embedding", { dimensions: 1024 }).notNull(),
-    timestamp: timestamp("timestamp").notNull().defaultNow(),
+    created_at: timestamp("timestamp").notNull().defaultNow(),
 }, table => ({
     conversationIdIdx: index("conversation_embeddings_idx").on(table.conversationId),
     embeddingIdx: index("embedding_idx").using("hnsw", table.embedding.op('vector_cosine_ops'))

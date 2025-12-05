@@ -36,6 +36,7 @@
     "pino": "^8.19.0",
     "pino-pretty": "^10.3.1",
     "postgres": "^3.4.7",
+    "voyageai": "^0.0.8",
     "zod": "^3.22.4"
   },
   "devDependencies": {

@@ -20,10 +20,10 @@ class ValidationError extends AppError {
     code = 'VALIDATION_ERROR';
 }   
 
-class InternalServerError extends AppError {
+class DatabaseError extends AppError {
     statusCode = 500
-    code = 'INTERNAL_SERVER_ERROR';
+    code = 'DATABASE_ERROR';
 }
 
 export { AppError } from "./base.errors";
-export { AuthenticationError, AuthorizationError, NotFoundError, ValidationError, InternalServerError };
+export { AuthenticationError, AuthorizationError, NotFoundError, ValidationError, DatabaseError };

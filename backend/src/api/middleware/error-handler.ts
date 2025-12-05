@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { AppError } from "../errors";
+import { AppError } from "../../errors";
 
 export function errorHandler(err: Error, request: FastifyRequest, reply:FastifyReply){
     if(err instanceof AppError){

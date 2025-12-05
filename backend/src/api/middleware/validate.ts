@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { ZodSchema, ZodError } from "zod";
-import { ValidationError } from "../errors";
+import { ValidationError } from "../../errors";
 
 export function validate<T>(schema: ZodSchema<T>) {
     return async (request: FastifyRequest, _reply: FastifyReply) => {
