@@ -1,13 +1,16 @@
 import { eq } from "drizzle-orm";
-import { db } from "../../infrastructure/db/index";
+import { Database } from "../../infrastructure/db/index";
 import { conversationEmbeddings, ConversationEmbedding, NewConversationEmbedding} from "../../infrastructure/db/schema";
 import { DatabaseError } from "../../errors";
 import { sql } from "drizzle-orm";
 
 export class EmbeddingsRepository {
+
+    constructor(private db: Database){}
+
     async create(embeddingData: NewConversationEmbedding): Promise<ConversationEmbedding> {
         try {
-            const [newEmbedding] = await db
+            const [newEmbedding] = await this.db
                 .insert(conversationEmbeddings)
                 .values(embeddingData)
                 .returning();
@@ -19,7 +22,7 @@ export class EmbeddingsRepository {
 
     async findByConversationId(conversationId: string): Promise<ConversationEmbedding | null> {
         try {
-            const results = await db
+            const results = await this.db
                 .select()
                 .from(conversationEmbeddings)
                 .where(eq(conversationEmbeddings.conversationId, conversationId))
@@ -32,7 +35,7 @@ export class EmbeddingsRepository {
 
     async upsert(conversationId: string, embedding: number[]): Promise<ConversationEmbedding> {
         try {
-            const [result] = await db
+            const [result] = await this.db
                 .insert(conversationEmbeddings)
                 .values({ conversationId, embedding })
                 .onConflictDoUpdate({
@@ -49,7 +52,7 @@ export class EmbeddingsRepository {
     async compareEmbeddings(queryEmbedding: number[]): Promise<ConversationEmbedding[]> {
         try {
             const vectorString = JSON.stringify(queryEmbedding)
-            const results = await db
+            const results = await this.db
                 .select()
                 .from(conversationEmbeddings)
                 .orderBy(sql`${conversationEmbeddings.embedding} <=> ${vectorString}::vector`)

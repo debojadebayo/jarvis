@@ -1,11 +1,11 @@
 import { IngestRequest } from "../../schemas/conversation.schema";
 import { ConversationRepository } from "../repositories/conversation.repository";
 import { MessageRepository } from "../repositories/messages.repository";
-import { EmbeddingQueue } from "./embeddingqueue";
-import { EmbeddingAdapter, VoyageAdapter } from "../../infrastructure/embedding-providers";
+import { EmbeddingAdapter } from "../../infrastructure/embedding-providers";
 import { EmbeddingsRepository } from "../repositories/embeddings.repository";
+import { EmbeddingQueue } from "./embeddingqueue";
 import { ConversationWithMessages } from "../../types";
-import { configDotenv } from "dotenv";
+
 
 interface ConversationUpsertMetrics {
     processed: number;
@@ -15,14 +15,12 @@ interface ConversationUpsertMetrics {
 
 export class ConversationService {
 
-    private embeddingQueue = EmbeddingQueue.getInstance();
-
-
     constructor(
         private conversationRepository: ConversationRepository,
         private messageRepository: MessageRepository,
         private embeddingsRepository: EmbeddingsRepository,
-        private embeddingClient: EmbeddingAdapter = new VoyageAdapter(process.env.VOYAGEAI_API_KEY || "") 
+        private embeddingClient: EmbeddingAdapter,
+        private embeddingQueue: EmbeddingQueue
 
     ) {}
 
@@ -136,6 +134,11 @@ export class ConversationService {
         })
 
         return result 
+    }
+
+    async reloadQueue(){
+        const missing = await this.conversationRepository.findConversationWithoutEmbeddings()
+        missing.forEach(conv => this.embeddingQueue.add(conv))
     }
 
 

@@ -1,0 +1,8 @@
+node_modules/
+/docs
+*.md 
+/dist 
+.git 
+.env
+.DS_Store
+converage/

@@ -3,8 +3,7 @@ import cors from "@fastify/cors";
 import { env } from "./config/env";
 import { registerRateLimit } from "./api/middleware/rate-limit";
 import { errorHandler } from "./api/middleware/error-handler";
-import { conversationRoutes } from "./api/routes/conversation.routes";
-import { healthRoutes } from "./api/routes/health.routes";
+import { conversationRoutes, healthRoutes } from "./api/routes/index";
 
 
 export async function buildApp(){
@@ -22,7 +21,5 @@ export async function buildApp(){
     await registerRateLimit(app);
 
     app.register(conversationRoutes, { prefix: '/api/v1'})
-    app
-
     return app
 }

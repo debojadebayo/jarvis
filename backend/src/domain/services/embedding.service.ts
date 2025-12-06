@@ -1,17 +1,16 @@
 import { EmbeddingQueue } from "./embeddingqueue"
 import { MessageRepository } from "../repositories/messages.repository";
-import { EmbeddingAdapter, VoyageAdapter } from "../../infrastructure/embedding-providers"; 
+import { EmbeddingAdapter } from "../../infrastructure/embedding-providers"; 
 import { Message } from "../../infrastructure/db/schema";
 import { EmbeddingsRepository } from "../repositories/embeddings.repository";
 
 export class EmbeddingService {
 
-    private embeddingQueue = EmbeddingQueue.getInstance();
-
     constructor(
         private messageRepository: MessageRepository,
         private embeddingsRepository: EmbeddingsRepository,
-        private embeddingClient: EmbeddingAdapter = new VoyageAdapter(process.env.VOYAGEAI_API_KEY || "")
+        private embeddingClient: EmbeddingAdapter,
+        private embeddingQueue: EmbeddingQueue,
     ){}
 
     async processNextConversation(): Promise<void> {

@@ -1,11 +1,11 @@
 services:
   postgres:
     image: ankane/pgvector:latest
-    container_name: conversation-db
+    container_name: jarvis-db
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: conversations
+      POSTGRES_PASSWORD: 123
+      POSTGRES_DB: jarvisbrain
     ports:
       - "5432:5432"
     volumes:
@@ -18,28 +18,29 @@ services:
     networks:
       - jarvis-network
 
-  backend:
+  app.server:
+    container_name: jarvis-server 
+    image: jarvis-image
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: jarvis-backend
+      target: development 
     ports:
-      - "3000:3000"
+      - "3000:8080"
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/conversations
+      DATABASE_URL: postgresql://postgres:123@postgres:5432/jarvisbrain
       API_KEY: ${API_KEY:-dev-secret-key}
       VOYAGE_API_KEY: ${VOYAGE_API_KEY}
       NODE_ENV: ${NODE_ENV:-development}
-      PORT: 3000
+      PORT: 8080
     volumes:
       - ./backend:/app
       - /app/node_modules
     networks:
       - jarvis-network
-    command: npm run dev
 
 volumes:
   pgdata:

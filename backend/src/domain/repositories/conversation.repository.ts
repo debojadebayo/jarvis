@@ -1,16 +1,17 @@
-import { eq, inArray, and, lte, gte } from "drizzle-orm";
-import { db } from "../../infrastructure/db/index";
-import { Conversation, conversations, NewConversation } from "../../infrastructure/db/schema";
+import { eq, inArray, and, lte, gte, isNull } from "drizzle-orm";
+import { Database } from "../../infrastructure/db/index";
+import { Conversation, conversationEmbeddings, conversations, NewConversation } from "../../infrastructure/db/schema";
 import { DatabaseError } from "../../errors";
-import { table } from "console";
 
 
 
-//should create DI here later for proper testing
 export class ConversationRepository {
+
+    constructor(private db: Database){}
+
     async findByClaudeId(claudeConversationId: string): Promise<Conversation | null> {
         try {
-            const results = await db
+            const results = await this.db
                 .select()
                 .from(conversations)
                 .where(eq(conversations.claudeConversationId, claudeConversationId))
@@ -23,7 +24,7 @@ export class ConversationRepository {
 
     async create(conversation: NewConversation): Promise<Conversation> {
         try {
-            const [newConversation] = await db
+            const [newConversation] = await this.db
                 .insert(conversations)
                 .values(conversation)
                 .returning();
@@ -35,7 +36,7 @@ export class ConversationRepository {
 
     async update(id: string, updates: Partial<Conversation>): Promise<Conversation> {
         try {
-            const [updatedConversation] = await db
+            const [updatedConversation] = await this.db
                 .update(conversations)
                 .set({...updates, updated_at: new Date()})
                 .where(eq(conversations.id, id))
@@ -48,7 +49,7 @@ export class ConversationRepository {
 
     async delete(id: string): Promise<void> {
         try {
-            await db
+            await this.db
                 .delete(conversations)
                 .where(eq(conversations.id, id));
         } catch (error) {
@@ -58,7 +59,7 @@ export class ConversationRepository {
 
     async findByIds(conversationIds: string[]): Promise<Conversation[]>{
         try {
-            const results = await db 
+            const results = await this.db 
                 .select()
                 .from(conversations)
                 .where(inArray(conversations.id, conversationIds))
@@ -74,13 +75,13 @@ export class ConversationRepository {
             if(!from && ! to){
                 throw new Error ("At least one date parameter is required ")
             }
-            
+
             const conditions = []
 
             if(from) conditions.push(gte(conversations.created_at, from))
             if(to) conditions.push(lte(conversations.created_at,to))
 
-            const results = await db
+            const results = await this.db
                 .select()
                 .from(conversations)
                 .where(conditions.length > 0 ? and(...conditions): undefined)
@@ -88,6 +89,23 @@ export class ConversationRepository {
             return results 
         } catch (error) {
              throw new DatabaseError('Failed to find conversations by date', { error });
+        }
+    }
+
+    async findConversationWithoutEmbeddings(): Promise<string[]>{
+        try {
+            const results = await this.db
+                .select( {id: conversations.id})
+                .from(conversations)
+                .leftJoin(
+                    conversationEmbeddings,
+                    eq(conversations.id, conversationEmbeddings.conversationId)
+                )
+                .where(isNull(conversationEmbeddings.id))
+            
+            return results.map(r => r.id)
+        } catch (error) {
+            throw new DatabaseError('Failed to find outstanding conversations', { error })
         }
     }
 }

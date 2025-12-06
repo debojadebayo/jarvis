@@ -56,3 +56,6 @@ extension/*.zip
 *.tmp
 tmp/
 temp/
+
+# md docs files 
+docs/

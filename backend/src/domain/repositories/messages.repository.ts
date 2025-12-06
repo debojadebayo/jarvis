@@ -1,15 +1,17 @@
 import { eq, inArray } from "drizzle-orm";
-import { db } from "../../infrastructure/db/index";
+import { Database } from "../../infrastructure/db/index";
 import { messages, Message, NewMessage } from "../../infrastructure/db/schema";
 import { DatabaseError } from "../../errors";
 
 
 export class MessageRepository {
+
+    constructor(private db: Database){}
     async upsertMessages(messageData: NewMessage[]): Promise<void> {
         try {
 
             for (const message of messageData) {
-                await db.insert(messages)
+                await this.db.insert(messages)
                 .values(message)
                 .onConflictDoUpdate({
                     target: [messages.conversationId, messages.sequence_number],
@@ -24,7 +26,7 @@ export class MessageRepository {
 
     async findByConversationId(conversationId: string): Promise<Message[]> {
         try {
-            return db
+            return this.db
                 .select()
                 .from(messages)
                 .where(eq(messages.conversationId, conversationId))
@@ -37,7 +39,7 @@ export class MessageRepository {
 
     async findByConversationIds(conversationIds: string[]): Promise<Message[]> {
         try {
-            return db
+            return this.db
                 .select()
                 .from(messages)
                 .where(inArray(messages.conversationId, conversationIds))
