@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../infrastructure/db/index";
 import { conversationEmbeddings, ConversationEmbedding, NewConversationEmbedding} from "../../infrastructure/db/schema";
 import { DatabaseError } from "../../errors";
+import { sql } from "drizzle-orm";
 
 export class EmbeddingsRepository {
     async create(embeddingData: NewConversationEmbedding): Promise<ConversationEmbedding> {
@@ -42,6 +43,25 @@ export class EmbeddingsRepository {
             return result;
         } catch (error) {
             throw new DatabaseError('Failed to upsert embedding', { conversationId, error });
+        }
+    }
+
+    async compareEmbeddings(queryEmbedding: number[]): Promise<ConversationEmbedding[]> {
+        try {
+            const vectorString = JSON.stringify(queryEmbedding)
+            const results = await db
+                .select()
+                .from(conversationEmbeddings)
+                .orderBy(sql`${conversationEmbeddings.embedding} <=> ${vectorString}::vector`)
+                .limit(5);
+
+            if(results.length === 0){
+                throw new Error("no conversations retrieved")
+            }
+            
+            return results     
+        } catch (error) {
+            throw new DatabaseError('Failed to compare embeddings', { queryEmbedding, error })
         }
     }
 }

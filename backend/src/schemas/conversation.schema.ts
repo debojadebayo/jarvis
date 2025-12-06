@@ -20,13 +20,18 @@ export const ingestRequestSchema = z.object({
 
 export const searchRequestSchema = z.object({
     query: z.string().min(1, 'Search query cannot be empty').max(500, 'Search query cannot exceed 500 characters'),
-    limit: z.number().min(1).max(100).optional().default(10),
-    from: z.string().datetime({ message: 'Invalid from date format' }).optional(),
-    to: z.string().datetime({ message: 'Invalid to date format' }).optional(),
 });
+
+export const dateRangeRequestSchema= z.object({
+    from: z.string().datetime({ message: 'Invalid from date format'}).optional(),
+    to: z.string().datetime({ message: 'Invalid to date format'}).optional()
+}).refine(data => data.from || data.to, {
+    message: "At least one date parameter is required"
+})
 
 
 export type IngestRequest = z.infer<typeof ingestRequestSchema>;
 export type ConversationInput = z.infer<typeof conversationSchema>;
 export type MessageInput = z.infer<typeof messageSchema>;
 export type SearchRequest = z.infer<typeof searchRequestSchema>;
+export type DateRangeRequest = z.infer<typeof dateRangeRequestSchema>;

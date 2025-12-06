@@ -3,7 +3,8 @@ import cors from "@fastify/cors";
 import { env } from "./config/env";
 import { registerRateLimit } from "./api/middleware/rate-limit";
 import { errorHandler } from "./api/middleware/error-handler";
-import { validate } from "./api/middleware/validate";
+import { conversationRoutes } from "./api/routes/conversation.routes";
+import { healthRoutes } from "./api/routes/health.routes";
 
 
 export async function buildApp(){
@@ -12,15 +13,16 @@ export async function buildApp(){
     });
     app.setErrorHandler(errorHandler)
 
-    app.get('/health', async (_request, _reply) => {
-        return { status: 'ok' };
-    });
+    app.register(healthRoutes)
 
     await app.register(cors, {
         origin: env.NODE_ENV === 'production' ? /^chrome-extension:\/\// : true,
     });
 
     await registerRateLimit(app);
+
+    app.register(conversationRoutes, { prefix: '/api/v1'})
+    app
 
     return app
 }
