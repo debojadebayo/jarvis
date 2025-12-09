@@ -53,7 +53,7 @@ async function loadStatus() {
 
 async function loadSettings() {
   const settings = await chrome.storage.sync.get(['apiEndpoint', 'apiKey']);
-  apiEndpointInput.value = settings.apiEndpoint || 'http://localhost:3000/api/v1';
+  apiEndpointInput.value = settings.apiEndpoint || 'http://46.224.116.241:3000/api/v1';
   apiKeyInput.value = settings.apiKey || '';
 }
 

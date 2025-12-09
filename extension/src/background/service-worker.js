@@ -1,7 +1,7 @@
 import { log } from '../lib/logger.js';
 
 const SYNC_ALARM_NAME = 'jarvis-daily-sync';
-const DEFAULT_API_ENDPOINT = 'http://localhost:3000/api/v1';
+const DEFAULT_API_ENDPOINT = 'http://46.224.116.241:3000/api/v1';
 
 async function initialize() {
   log.info('Service worker initialized');
