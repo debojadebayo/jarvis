@@ -1,4 +1,4 @@
-# Claude Conversation Indexer
+# Jarvis Indexer
 
 > Make all your Claude.ai conversations searchable and reviewable with AI assistance
 
@@ -37,7 +37,7 @@ npm run dev
 | **Extension** | Vanilla JS, Manifest V3 | Simple, no build step |
 | **Backend** | Fastify + TypeScript | Fast, async-first, type-safe |
 | **Database** | PostgreSQL + pgvector | Vector search built-in |
-| **ORM** | Drizzle ORM | Like EF Core, type-safe |
+| **ORM** | Drizzle ORM |  type-safe |
 | **Embeddings** | Voyage AI | High quality, $0.72/year |
 | **MCP Server** | TypeScript | Exposes data to Claude |
 | **Hosting** | Local → Fly.io | Free tier, zero config |
@@ -66,9 +66,7 @@ Chrome Extension → Backend API → PostgreSQL + pgvector → MCP Server → Cl
   /migrations      # Database migrations
 /extension
   /src             # Chrome extension code
-/docs
-  ARCHITECTURE.md  # Detailed design decisions
-  IMPLEMENTATION.md # Implementation details
+/docs              #Various md files to walk through development 
 ```
 
 ## Database Schema
@@ -101,21 +99,6 @@ list_topics(limit)                  // Get most discussed topics
 - **Embeddings**: ~$0.72/year (10 conversations/day)
 - **Fly.io hosting**: $0 (free tier) or $3-5/month
 - **Total**: Under $10/year
-
-## Implementation Phases
-
-1. **Week 1**: Chrome extension - capture & upload
-2. **Week 2**: Backend - store conversations + embeddings
-3. **Week 3**: Search - semantic vector search
-4. **Week 4**: MCP server - expose to Claude
-5. **Week 5**: Test & polish
-
-## Development
-
-See detailed docs:
-- [ARCHITECTURE.md](./docs/ARCHITECTURE.md) - Design decisions & patterns
-- [IMPLEMENTATION.md](./docs/IMPLEMENTATION.md) - Setup & implementation details
-- [PROJECT.md](./PROJECT.md) - Complete project specification
 
 ## Why This Works
 

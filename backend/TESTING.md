@@ -10,7 +10,7 @@
 
 ## Phase 1: Environment Setup
 
-### 1.1 Create Environment File
+### 1.1 Create Environment File ✅
 
 ```bash
 cd backend
@@ -27,7 +27,7 @@ PORT=3000
 HOST=0.0.0.0
 ```
 
-### 1.2 Start Database Only
+### 1.2 Start Database Only ✅
 
 ```bash
 # From project root
@@ -53,7 +53,7 @@ docker exec -it jarvis-db psql -U postgres -d jarvisbrain -c "\dx"
 
 You should see `vector` in the list.
 
-### 1.4 Run Database Migrations
+### 1.4 Run Database Migrations ✅
 
 ```bash
 cd backend
@@ -80,14 +80,14 @@ Expected output:
 
 ## Phase 2: Start the Backend
 
-### 2.1 Run Locally (Development)
+### 2.1 Run Locally (Development) ✅
 
 ```bash
 cd backend
 npm run dev
 ```
 
-### 2.2 Run with Docker
+### 2.2 Run with Docker ✅
 
 ```bash
 # From project root
@@ -98,7 +98,7 @@ docker compose up --build
 
 ## Phase 3: Manual API Testing
 
-### 3.1 Health Checks
+### 3.1 Health Checks ✅
 
 ```bash
 # Basic health
@@ -109,12 +109,12 @@ curl http://localhost:3000/health
 
 ```bash
 # Database health
-curl http://localhost:3000/dbhealth
+curl http://localhost:3000/health
 
 # Expected: {"status":"Ok","database":"Connected"}
 ```
 
-### 3.2 Authentication Test
+### 3.2 Authentication Test ✅
 
 ```bash
 # Without token - should fail
@@ -130,8 +130,8 @@ curl -H "Authorization: Bearer wrong-token" \
 
 # Expected: 403 Forbidden
 ```
-
-### 3.3 Ingest Conversations
+# to change the api key when deploying in porduction 
+### 3.3 Ingest Conversations  ✅
 
 ```bash
 # Ingest a test conversation
@@ -163,7 +163,7 @@ curl -X POST http://localhost:3000/api/v1/conversations/ \
 # Expected: {"success":true,"processed":1,"created":1,"updated":0}
 ```
 
-### 3.4 Ingest Multiple Conversations
+### 3.4 Ingest Multiple Conversations ✅
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/conversations/ \
@@ -211,7 +211,7 @@ curl -X POST http://localhost:3000/api/v1/conversations/ \
 # Expected: {"success":true,"processed":2,"created":2,"updated":0}
 ```
 
-### 3.5 Update Existing Conversation (Upsert)
+### 3.5 Update Existing Conversation (Upsert)  ✅
 
 ```bash
 # Add more messages to existing conversation
@@ -253,7 +253,7 @@ curl -X POST http://localhost:3000/api/v1/conversations/ \
 # Expected: {"success":true,"processed":1,"created":0,"updated":1}
 ```
 
-### 3.6 Search Conversations (Semantic)
+### 3.6 Search Conversations (Semantic) 
 
 > Note: Requires embeddings to be generated. Check queue processing.
 
@@ -265,7 +265,7 @@ curl -G http://localhost:3000/api/v1/conversations/search \
 # Expected: Array of matching conversations with messages
 ```
 
-### 3.7 Date Range Query
+### 3.7 Date Range Query ✅
 
 ```bash
 # Get conversations from a date range
@@ -286,7 +286,7 @@ curl -G http://localhost:3000/api/v1/conversations/date-range \
 # Expected: Conversations created on or after Jan 16
 ```
 
-### 3.8 Validation Error Tests
+### 3.8 Validation Error Tests ✅
 
 ```bash
 # Empty conversations array
@@ -315,7 +315,7 @@ curl -X POST http://localhost:3000/api/v1/conversations/ \
 # Expected: 400 Bad Request - messages required
 ```
 
-### 3.9 Rate Limiting Test
+### 3.9 Rate Limiting Test ✅
 
 ```bash
 # Run this in a loop to trigger rate limit
@@ -366,30 +366,115 @@ WHERE e.id IS NULL;
 
 ## Phase 5: Unit Testing
 
+Unit tests run on the host machine (not in Docker) and mock all external dependencies.
+
 ### 5.1 Run All Tests
+
+```bash
+cd backend
+npm test -- --run
+```
+
+The `-- --run` flag:
+- First `--` passes arguments to vitest
+- `--run` runs tests once and exits (no watch mode)
+
+### 5.2 Run Tests in Watch Mode
 
 ```bash
 cd backend
 npm test
 ```
 
-### 5.2 Run Tests with UI
+### 5.3 Run Tests with UI
 
 ```bash
 npm run test:ui
 ```
 
-### 5.3 Run Specific Test File
+### 5.4 Run Specific Test File
 
 ```bash
-npm test -- src/domain/services/conversation.service.test.ts
+npm test -- --run src/test/api/controllers/conversation.controller.test.ts
 ```
 
-### 5.4 Test Coverage (if configured)
+### 5.5 Test Coverage
 
 ```bash
-npm test -- --coverage
+npm test -- --run --coverage
 ```
+
+### 5.6 Test Structure
+
+Tests are located in `src/test/` mirroring the source structure:
+
+```
+src/test/
+├── setup.ts                              # Test setup & mock env vars
+└── api/
+    ├── controllers/
+    │   ├── conversation.controller.test.ts
+    │   └── health.controller.test.ts
+    └── middleware/
+        └── rate-limit.test.ts
+```
+
+### 5.7 Current Test Coverage (26 tests)
+
+**Health Controller Tests (3 tests):**
+
+| Category | Test | Status |
+|----------|------|--------|
+| Health | Basic health check → 200 | ✅ |
+| Health | DB connected → 200 | ✅ |
+| Health | DB disconnected → 503 | ✅ |
+
+**Conversation Controller Tests (18 tests):**
+
+| Category | Test | Status |
+|----------|------|--------|
+| Authentication | No auth header → 401 | ✅ |
+| Authentication | Invalid auth format → 401 | ✅ |
+| Authentication | Wrong token → 403 | ✅ |
+| Validation | Empty conversations array → 400 | ✅ |
+| Validation | Missing required fields → 400 | ✅ |
+| Validation | Empty message content → 400 | ✅ |
+| Validation | Invalid timestamp format → 400 | ✅ |
+| Validation | Invalid role → 400 | ✅ |
+| Ingestion | Single conversation → 200 | ✅ |
+| Ingestion | Multiple conversations → 200 | ✅ |
+| Ingestion | Upsert existing → 200 | ✅ |
+| Date Range | Within date range → 200 | ✅ |
+| Date Range | From date onwards → 200 | ✅ |
+| Date Range | Up to date → 200 | ✅ |
+| Date Range | No date params → 400 | ✅ |
+| Date Range | Invalid date format → 400 | ✅ |
+| Date Range | Empty result → 200 | ✅ |
+| Date Range | Requires auth → 401 | ✅ |
+
+**Rate Limiting Tests (5 tests):**
+
+| Category | Test | Status |
+|----------|------|--------|
+| Rate Limit | Allow under limit → 200 | ✅ |
+| Rate Limit | Headers present | ✅ |
+| Rate Limit | Exceed limit → 429 | ✅ |
+| Rate Limit | Default config works | ✅ |
+| Rate Limit | Max 100 requests config | ✅ |
+
+### 5.8 Environment for Tests
+
+Unit tests use mock environment variables defined in `src/test/setup.ts`:
+
+```ts
+process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/testdb';
+process.env.API_KEY = 'test-api-key-min-16-chars';
+process.env.VOYAGE_API_KEY = 'test-voyage-key';
+```
+
+These are fake values - the database is mocked, so no real connection is made.
+
+For integration tests, create a `.env.test` file with real test database credentials.
 
 ---
 
