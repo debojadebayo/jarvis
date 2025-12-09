@@ -14,21 +14,73 @@ Captures your Claude.ai conversations, indexes them with semantic search, and le
 
 ## Quick Start
 
+### Prerequisites
+
+- Node.js 22+
+- Docker & Docker Compose
+- [Voyage AI API key](https://www.voyageai.com/)
+
+### Environment Setup
+
 ```bash
-# 1. Start local environment
-docker-compose up -d
+# Copy example env and fill in your values
+cp .env.example .env
+```
+
+---
+
+### Option 1: Local Development (Recommended for Development)
+
+Run the backend locally with just the database in Docker.
+
+```bash
+# 1. Start PostgreSQL with pgvector
+docker compose up postgres -d
 
 # 2. Install dependencies
 cd backend && npm install
 
-# 3. Run migrations
-npm run db:migrate
+# 3. Run database migrations (connects to Postgres via localhost:5432)
+# Only needed on first setup or after schema changes
+docker compose exec app.server npm run db:migrate
 
-# 4. Start backend
+# 4. Start the backend server
 npm run dev
-
-# 5. Load Chrome extension (see /extension/README.md)
 ```
+
+The API will be available at `http://localhost:3000`
+
+---
+
+### Option 2: Full Docker Deployment
+
+Run everything in Docker containers.
+
+```bash
+# 1. Build and start all services
+docker compose up -d --build
+
+# 2. Run database migrations (only needed on first setup or after schema changes)
+docker compose exec app.server npm run db:migrate
+
+# 3. Check logs
+docker compose logs -f app.server
+```
+
+The API will be available at `http://localhost:3000`
+
+**Useful commands:**
+```bash
+docker compose down          # Stop all services
+docker compose down -v       # Stop and remove volumes (reset DB)
+docker compose logs postgres # View database logs
+```
+
+---
+
+### Load Chrome Extension
+
+See [extension/README.md](extension/README.md) for installation instructions.
 
 ## Tech Stack
 
