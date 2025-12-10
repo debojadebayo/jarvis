@@ -6,8 +6,10 @@ const envSchema = z.object({
     API_KEY: z.string().min(16),
     VOYAGE_API_KEY: z.string().min(1),
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-    PORT: z.coerce.number().default(3000),
+    PORT: z.coerce.number().default(8080),
     HOST: z.string().default('0.0.0.0'),
+    SSL_CERT_PATH: z.string().min(1).optional(),
+    SSL_KEY_PATH: z.string().min(1).optional()
 });
 
 export const env = envSchema.parse(process.env);

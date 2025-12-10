@@ -36,9 +36,12 @@ services:
       VOYAGE_API_KEY: ${VOYAGE_API_KEY}
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 8080
+      SSL_CERT_PATH: /app/certs/origin-cert.pem
+      SSL_KEY_PATH: /app/certs/origin-key.pem
     volumes:
       - ./backend:/app
       - /app/node_modules
+      - /root/certs:/app/certs:ro
     networks:
       - jarvis-network
 
