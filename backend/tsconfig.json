@@ -21,6 +21,6 @@
     "allowSyntheticDefaultImports": true,
     "types": ["node"]
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/mcp"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }
