@@ -67,7 +67,7 @@ docker compose exec app.server npm run db:migrate
 docker compose logs -f app.server
 ```
 
-The API will be available at `http://localhost:3000`
+The API will be available at `http://localhost:8080`
 
 **Useful commands:**
 ```bash
@@ -100,25 +100,98 @@ See [extension/README.md](extension/README.md) for installation instructions.
 Chrome Extension → Backend API → PostgreSQL + pgvector → MCP Server → Claude
 ```
 
-**Key Decisions:**
+### System Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         LOCAL MACHINE                           │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────┐      stdio       ┌─────────────────────┐   │
+│  │  Claude Desktop │◄────────────────►│   MCP Server        │   │
+│  │                 │                  │   (npx tsx ...)     │   │
+│  └─────────────────┘                  └──────────┬──────────┘   │
+│                                                  │              │
+│  ┌─────────────────┐                             │              │
+│  │ Chrome Extension│ ────────────────────────────┼──────┐       │
+│  │  (claude.ai)    │                             │      │       │
+│  └─────────────────┘                             │      │       │
+└──────────────────────────────────────────────────│──────│───────┘
+                                                   │      │
+                                                   │HTTPS │HTTPS
+                                                   ▼      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        REMOTE SERVER                            │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                    Backend API                          │    │
+│  │  POST /api/v1/conversations     (ingest from extension) │    │
+│  │  GET  /api/v1/conversations/search    (semantic search) │    │
+│  │  GET  /api/v1/conversations/date-range  (date filter)   │    │ 
+│  └──────────────────────────┬──────────────────────────────┘    │
+│                             │                                   │
+│                             ▼                                   │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │              PostgreSQL + pgvector                      │    │
+│  │  • conversations (metadata)                             │    │
+│  │  • messages (full text)                                 │    │
+│  │  • conversation_embeddings (1024-D vectors)             │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow
+
+1. **Capture**: Chrome extension monitors claude.ai and stores conversations locally
+2. **Sync**: Daily alarm (or manual trigger) POSTs conversations to backend API
+3. **Index**: Backend upserts conversations and queues them for embedding generation
+4. **Embed**: Voyage AI generates 1024-D vectors, stored in pgvector
+5. **Search**: MCP server exposes `search_conversations` and `get_conversations_by_date` tools
+6. **Query**: Claude Desktop calls MCP tools → API → vector similarity search → returns top 5 matches
+
+### Key Decisions
+
 - **Conversation-level embeddings** (not per-message) - simpler, cheaper
 - **Return full conversations** - Claude has 200k context window
 - **Single-user** - no auth complexity
-- **Local-first** - privacy, zero cost
+- **Local-first option** - privacy, zero cost
+
+> **⚠️ Not Production Ready**
+> Authentication uses a simple Bearer token comparison—no JWT, OAuth, or OIDC.
+> Input validation is minimal. This is a personal project; do not deploy to production
+> or expose to untrusted users without implementing proper security measures.
 
 ## Project Structure
 
 ```
-/backend
-  /src
-    /api           # Fastify REST endpoints
-    /repositories  # DB access (Drizzle ORM)
-    /services      # Business logic
-    /mcp           # MCP server tools
-  /migrations      # Database migrations
-/extension
-  /src             # Chrome extension code
-/docs              #Various md files to walk through development 
+├── backend/
+│   └── src/
+│       ├── api/
+│       │   ├── controllers/     # Request handlers
+│       │   ├── middleware/      # Auth, validation, rate-limiting
+│       │   └── routes/          # Route definitions
+│       ├── domain/
+│       │   ├── repositories/    # DB access (Drizzle ORM)
+│       │   └── services/        # Business logic
+│       ├── infrastructure/
+│       │   ├── db/              # Database connection & schema
+│       │   └── embedding-providers/  # Voyage AI adapter
+│       ├── mcp/                 # MCP server (tools, api-client)
+│       ├── config/              # Environment & app config
+│       ├── schemas/             # Zod validation schemas
+│       ├── errors/              # Custom error classes
+│       └── test/                # Unit & integration tests
+│
+├── extension/
+│   ├── src/
+│   │   ├── background/          # Service worker (sync logic)
+│   │   ├── content/             # Content script (DOM capture)
+│   │   ├── popup/               # Extension popup UI
+│   │   ├── lib/                 # Shared utilities
+│   │   └── types/               # TypeScript definitions
+│   └── icons/                   # Extension icons
+│
+├── scripts/                     # Utility scripts
+└── data/                        # Local data storage
 ```
 
 ## Database Schema
@@ -140,22 +213,6 @@ GET  /api/v1/conversations/:id # Get full conversation
 ## MCP Tools
 
 ```typescript
-search_conversations(query, limit)  // Find relevant conversations
-get_conversation(id)                // Get full conversation
-list_topics(limit)                  // Get most discussed topics
+search_conversations(query, limit?)  
+get_conversation(id)                
 ```
-
-## Cost Estimate
-
-- **Local development**: $0
-- **Embeddings**: ~$0.72/year (10 conversations/day)
-- **Fly.io hosting**: $0 (free tier) or $3-5/month
-- **Total**: Under $10/year
-
-## Why This Works
-
-- **Leverage Claude**: No quiz engine needed, Claude generates questions from your data
-- **Simple V1**: Just capture, search, retrieve
-- **MCP is perfect**: Give Claude tools to access your data
-- **Natural interaction**: Review feels like a conversation
-- **Easy to extend**: V2 can add spaced repetition, analytics, etc.

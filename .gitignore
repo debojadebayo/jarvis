@@ -60,3 +60,6 @@ temp/
 
 # md docs files 
 docs/
+
+# Data files lifted from claude 
+data
