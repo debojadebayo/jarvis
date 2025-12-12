@@ -18,7 +18,7 @@ export class ConversationController {
             processed: result.processed,
             created: result.created,
             updated:  result.updated,
-            });
+        });
     }
 
     async search(

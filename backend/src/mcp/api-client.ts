@@ -2,7 +2,12 @@ import axios, { AxiosResponse } from 'axios'
 import { env } from './config/env'
 import { SearchRequest, DateRangeRequest } from '../schemas/conversation.schema'
 import dotenv from 'dotenv'
-import path from 'path'
+import { fileURLToPath } from 'url'
+import { dirname } from 'path'
+import * as path from 'path'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 dotenv.config({path: path.resolve(__dirname, '../../../.env')})
 

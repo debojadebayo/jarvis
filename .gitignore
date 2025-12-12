@@ -63,3 +63,6 @@ docs/
 
 # Data files lifted from claude 
 data
+
+# Personal data scripts 
+scripts
